@@ -2,6 +2,11 @@
 
 ShopEasy is a demo pharmacy and wellness store. Browse the 16-product catalog and adjust cart quantities on the cards or product pages. Guest checkout records contact and delivery details with the order in MongoDB. Admins can manage inventory, upload product photos, and view order details.
 
+## Live links
+
+- [ShopEasy storefront](https://shopeasy-hr4a.onrender.com/)
+- [ShopEasy backend API](https://shopeasy-api-6ikd.onrender.com/api/products)
+
 ## Run locally on Windows
 
 Install **JDK 21**, **Maven 3.9+**, **Node.js 22.12+ or 24 LTS**, and **Git**. Use MongoDB Atlas or a local MongoDB replica set for checkout. Verify your tools in PowerShell.
