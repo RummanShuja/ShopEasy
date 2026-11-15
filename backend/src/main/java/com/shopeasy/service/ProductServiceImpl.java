@@ -9,7 +9,6 @@ import com.shopeasy.exception.ProductNotFoundException;
 import com.shopeasy.model.Product;
 import com.shopeasy.repository.ProductRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -85,9 +84,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Product fromRequest(ProductRequest request, String id, Long version, LocalDateTime createdAt, boolean active) {
-        double price = request.price().doubleValue();
-        if (!Double.isFinite(price) || price <= 0) {
+        double rawPrice = request.price().doubleValue();
+        if (!Double.isFinite(rawPrice) || rawPrice <= 0) {
             throw ApiException.badField("price", "Enter a positive price within the supported numeric range.");
+        }
+        double price = ProductPrices.round(request.price()).doubleValue();
+        if (!Double.isFinite(price) || price <= 0) {
+            throw ApiException.badField("price", "Enter a finite price of at least 0.01 after rounding.");
         }
         return new Product(id, request.name(), request.description(), request.category(), request.brand(), price,
                 request.discountPercent(), request.stock(), request.imageUrl(), request.rating().doubleValue(),
@@ -101,11 +104,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductResponse toResponse(Product product) {
-        BigDecimal price = BigDecimal.valueOf(product.price());
-        BigDecimal discounted = price.multiply(BigDecimal.valueOf(100L - product.discountPercent(), 2));
         return new ProductResponse(product.id(), product.name(), product.description(), product.category(),
-                product.brand(), price.setScale(2, RoundingMode.HALF_UP), product.discountPercent(),
-                discounted.setScale(2, RoundingMode.HALF_UP), product.stock(), product.imageUrl(),
+                product.brand(), ProductPrices.original(product), product.discountPercent(),
+                ProductPrices.discounted(product), product.stock(), product.imageUrl(),
                 product.rating(), product.active(), product.createdAt());
     }
 }

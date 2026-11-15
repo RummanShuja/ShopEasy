@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .sessionManagement(sessions -> sessions.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(access -> access
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/admin/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/login", "/api/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/*",
                                 "/catalog/**", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/catalog/**", "/actuator/health").permitAll()
@@ -67,7 +67,7 @@ public class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(origins);
         cors.setAllowedMethods(List.of("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         cors.setExposedHeaders(List.of("Location"));
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
