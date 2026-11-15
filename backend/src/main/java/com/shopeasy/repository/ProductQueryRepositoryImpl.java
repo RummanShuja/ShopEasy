@@ -4,10 +4,13 @@ import com.shopeasy.dto.ProductFilter;
 import com.shopeasy.model.Product;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 
 public class ProductQueryRepositoryImpl implements ProductQueryRepository {
@@ -20,6 +23,18 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
 
     @Override
     public List<Product> findCatalogProducts(ProductFilter filter, boolean includeInactive) {
+        return mongo.find(catalogQuery(filter, includeInactive).with(sorting(filter.sort())), Product.class);
+    }
+
+    @Override
+    public Page<Product> findCatalogProducts(ProductFilter filter, Pageable pageable) {
+        Query filterQuery = catalogQuery(filter, false);
+        Query pageQuery = Query.of(filterQuery).with(sorting(filter.sort())).with(pageable);
+        return PageableExecutionUtils.getPage(mongo.find(pageQuery, Product.class), pageable,
+                () -> mongo.count(filterQuery, Product.class));
+    }
+
+    private Query catalogQuery(ProductFilter filter, boolean includeInactive) {
         Query query = includeInactive ? new Query() : Query.query(Criteria.where("active").is(true));
 
         if (StringUtils.hasText(filter.search())) {
@@ -40,7 +55,7 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
             }
             query.addCriteria(price);
         }
-        return mongo.find(query.with(sorting(filter.sort())), Product.class);
+        return query;
     }
 
     @Override

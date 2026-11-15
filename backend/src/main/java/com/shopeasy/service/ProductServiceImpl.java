@@ -1,5 +1,6 @@
 package com.shopeasy.service;
 
+import com.shopeasy.dto.PageResponse;
 import com.shopeasy.dto.ProductFilter;
 import com.shopeasy.dto.ProductRequest;
 import com.shopeasy.dto.ProductResponse;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -32,13 +34,23 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductResponse> list(ProductFilter filter, boolean includeInactive) {
+        validateRange(filter);
+        return products.findCatalogProducts(filter, includeInactive).stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public PageResponse<ProductResponse> listPage(ProductFilter filter, Pageable pageable) {
+        validateRange(filter);
+        return PageResponse.from(products.findCatalogProducts(filter, pageable).map(this::toResponse));
+    }
+
+    private void validateRange(ProductFilter filter) {
         validateBound("minPrice", filter.minPrice());
         validateBound("maxPrice", filter.maxPrice());
         if (filter.minPrice() != null && filter.maxPrice() != null
                 && filter.minPrice().compareTo(filter.maxPrice()) > 0) {
             throw ApiException.badField("maxPrice", "Maximum price must be at least the minimum price.");
         }
-        return products.findCatalogProducts(filter, includeInactive).stream().map(this::toResponse).toList();
     }
 
     @Override

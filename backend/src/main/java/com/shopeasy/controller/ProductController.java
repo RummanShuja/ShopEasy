@@ -1,5 +1,6 @@
 package com.shopeasy.controller;
 
+import com.shopeasy.dto.PageParameters;
 import com.shopeasy.dto.ProductFilter;
 import com.shopeasy.dto.ProductRequest;
 import com.shopeasy.dto.ProductResponse;
@@ -26,7 +27,10 @@ public class ProductController {
     }
 
     @GetMapping("/api/products")
-    public List<ProductResponse> list(@Valid @ModelAttribute ProductFilter filter) {
+    public Object list(@Valid @ModelAttribute ProductFilter filter, @ModelAttribute PageParameters pagination) {
+        if (pagination.supplied()) {
+            return products.listPage(filter, pagination.toPageRequest(8));
+        }
         return products.list(filter, false);
     }
 
