@@ -7,7 +7,7 @@
 :root {
   font-family: var(--font-sans);
   color: #17211d;
-  background: #f8faf8;
+  background: #faf9f5;
   font-synthesis: none;
   --green: #086447;
   --green-dark: #064d38;
@@ -83,16 +83,18 @@ button:disabled { cursor: not-allowed; }
 
 .storefront { padding-top: 23px; padding-bottom: 65px; }
 .hero {
-  position: relative; isolation: isolate; display: flex; align-items: center; min-height: 326px; overflow: hidden;
-  border-radius: 24px; background: #dceee0;
+  display: grid; grid-template-columns: 46% minmax(0, 1fr); min-height: 356px; overflow: hidden;
+  border-radius: 24px; background: #134838;
 }
-.hero-image { position: absolute; z-index: -2; inset: 0 0 0 auto; width: 67%; height: 100%; object-fit: cover; object-position: 50% 52%; }
-.hero::after { position: absolute; z-index: -1; inset: 0; content: ""; background: linear-gradient(90deg, #e2f1e5 0%, #e2f1e5 31%, #e2f1e5f2 40%, #e2f1e540 54%, transparent 67%); }
-.hero-copy { padding: 34px clamp(29px, 4.5vw, 62px); width: 53%; }
-.hero h1 { font-size: clamp(2.85rem, 5.15vw, 4.5rem); font-weight: 760; line-height: .98; letter-spacing: -.078em; }
-.hero h1 span { color: var(--green); }
-.hero p { margin: 17px 0 21px; max-width: 34ch; color: #3b5147; font-size: clamp(.92rem, 1.3vw, 1.08rem); line-height: 1.55; }
-.hero-button { min-height: 45px; padding-inline: 17px; }
+.hero-media { position: relative; background: #cce1cb; }
+.hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 63% 55%; }
+.hero-copy { align-self: center; padding: 32px clamp(24px, 3.6vw, 50px); color: #fffcf0; }
+.hero h1 { font-size: clamp(2.4rem, 4.65vw, 4.2rem); font-weight: 740; line-height: 1; letter-spacing: -.075em; }
+.hero h1 span { color: #bcdfba; }
+.hero p { margin: 19px 0 24px; max-width: 34ch; color: #e2eee5; font-size: clamp(.93rem, 1.3vw, 1.08rem); line-height: 1.6; }
+.hero .hero-button { min-height: 45px; padding-inline: 17px; color: #194b3a; background: #e9f4e4; }
+.hero .hero-button:hover { background: #fffdf5; }
+.hero .hero-button:focus-visible { outline-color: #cceacc; }
 
 .categories-section { margin-top: 33px; }
 .categories-section h2, .section-heading h2 { font-size: 1.48rem; font-weight: 750; line-height: 1.2; letter-spacing: -.052em; }
@@ -110,6 +112,10 @@ button:disabled { cursor: not-allowed; }
 .section-heading { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
 .section-heading h2 { font-size: 1.75rem; }
 .section-heading p { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+.catalog-count { margin: 0 0 10px; color: var(--muted); font-size: .82rem; }
+.catalog-count:empty { display: none; }
+.catalog-more { display: grid; justify-items: center; gap: 10px; margin-top: 24px; text-align: center; }
+.catalog-more .button { min-width: 152px; }
 .filter-bar { display: flex; gap: 10px 14px; justify-content: space-between; align-items: center; margin: 13px 0 17px; flex-wrap: wrap; }
 .price-filters, .filter-sort { display: flex; align-items: center; gap: 7px; }
 .filter-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 650; font-size: .82rem; margin-right: 3px; }
@@ -312,7 +318,7 @@ body:has(dialog[open]) .toast-stack--global { display: none; }
   .nav-search { margin-left: 3px; }
   .nav-actions { gap: 5px; }
   .nav-category { width: 140px; }
-  .hero { min-height: 312px; }
+  .hero { min-height: 312px; grid-template-columns: 48% minmax(0, 1fr); }
   .admin-shell { grid-template-columns: 172px minmax(0, 1fr); }
   .inventory-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -330,12 +336,12 @@ body:has(dialog[open]) .toast-stack--global { display: none; }
   .logo { font-size: 1.22rem; }
   .logo-mark { width: 33px; height: 33px; }
   .storefront { padding-top: 13px; padding-bottom: 42px; }
-  .hero { display: grid; min-height: 0; border-radius: 17px; }
-  .hero-image { position: static; grid-row: 2; width: 100%; height: 163px; object-fit: cover; object-position: 50% 58%; }
-  .hero::after { background: none; }
-  .hero-copy { width: auto; padding: 21px 21px 16px; }
+  .hero { grid-template-columns: 1fr; min-height: 0; border-radius: 17px; }
+  .hero-media { height: clamp(185px, 46vw, 240px); }
+  .hero-image { object-position: 55% 56%; }
+  .hero-copy { padding: 25px 22px 22px; }
   .hero h1 { font-size: clamp(2.45rem, 8.5vw, 3.6rem); }
-  .hero p { margin: 10px 0 13px; }
+  .hero p { margin: 10px 0 15px; }
   .categories-section, .catalog-section { margin-top: 22px; }
   .category-chips { gap: 6px; margin-top: 9px; }
   .category-chip { min-height: 36px; padding: 5px 8px; gap: 4px; font-size: .73rem; }
