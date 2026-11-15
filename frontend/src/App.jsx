@@ -6,6 +6,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
+import { CheckoutPage } from './pages/CheckoutPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
 import { StorefrontPage } from './pages/StorefrontPage';
@@ -33,6 +34,7 @@ export default function App() {
               <Route element={<StoreLayout />}>
                 <Route index element={<StorefrontPage />} />
                 <Route path="products/:id" element={<ProductDetailsPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
               <Route path="admin/login" element={<AdminLoginPage />} />

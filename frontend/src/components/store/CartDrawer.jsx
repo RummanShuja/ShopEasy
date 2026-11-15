@@ -1,4 +1,5 @@
-import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Dialog } from '../ui/Dialog';
@@ -52,7 +53,9 @@ export function CartDrawer() {
         <div className="cart-totals">
           <div><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
           <div><strong>Grand total</strong><strong>{formatCurrency(subtotal)}</strong></div>
-          <button type="button" className="button button--primary" onClick={closeCart}>Continue shopping</button>
+          <Link className="button button--primary" to="/checkout" onClick={closeCart}>
+            Checkout <ArrowRight size={17} />
+          </Link>
         </div>
       )}
     </Dialog>

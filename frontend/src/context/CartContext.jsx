@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useState } from 'react';
+import { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import { getProduct } from '../api/productsApi';
 import { useToast } from './ToastContext';
 
@@ -40,6 +40,11 @@ function cartReducer(items, action) {
         : item);
     case 'remove':
       return items.filter((item) => item.product.id !== action.id);
+    case 'ordered':
+      return items.flatMap((item) => {
+        const quantity = item.quantity - (action.quantities.get(item.product.id) || 0);
+        return quantity > 0 ? [{ ...item, quantity }] : [];
+      });
     case 'refresh':
       return items.flatMap((item) => {
         if (!action.products.has(item.product.id)) return [item];
@@ -56,6 +61,7 @@ export function CartProvider({ children }) {
   const [isOpen, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState(false);
+  const confirmed = useRef(new Set());
   const notify = useToast();
 
   useEffect(() => {
@@ -88,9 +94,15 @@ export function CartProvider({ children }) {
     notify('Removed from your cart.');
   }
 
+  function completeOrder(order) {
+    if (confirmed.current.has(order.reference)) return;
+    confirmed.current.add(order.reference);
+    dispatch({ type: 'ordered', quantities: new Map(order.items.map((item) => [item.productId, item.quantity])) });
+  }
+
   async function refresh() {
     setCheckError(false);
-    if (!items.length) return;
+    if (!items.length) return true;
     setChecking(true);
     const results = await Promise.allSettled(items.map((item) => getProduct(item.product.id)));
     const latest = new Map();
@@ -114,6 +126,7 @@ export function CartProvider({ children }) {
     setCheckError(failed);
     setChecking(false);
     if (changed) notify('Your cart was updated to reflect current prices or stock.');
+    return !failed;
   }
 
   function openCart() {
@@ -124,7 +137,7 @@ export function CartProvider({ children }) {
   return (
     <CartContext.Provider value={{
       items, count, subtotal, add, changeQuantity, remove, isOpen, openCart,
-      closeCart: () => setOpen(false), checking, checkError, refresh,
+      closeCart: () => setOpen(false), checking, checkError, refresh, completeOrder,
     }}>
       {children}
     </CartContext.Provider>
