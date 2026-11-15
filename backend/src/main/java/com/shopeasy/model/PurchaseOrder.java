@@ -14,6 +14,8 @@ public record PurchaseOrder(
         String reference,
         String customerName,
         String email,
+        String phone,
+        DeliveryAddress deliveryAddress,
         Instant createdAt,
         List<Item> items,
         @Field(targetType = FieldType.STRING) BigDecimal total

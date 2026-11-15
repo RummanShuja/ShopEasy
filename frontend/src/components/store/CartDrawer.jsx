@@ -1,9 +1,10 @@
-import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Dialog } from '../ui/Dialog';
 import { ProductImage } from '../ui/ProductImage';
+import { QuantityControl } from '../ui/QuantityControl';
 
 export function CartDrawer() {
   const { items, count, subtotal, changeQuantity, remove, closeCart, checking, checkError, refresh } = useCart();
@@ -30,14 +31,9 @@ export function CartDrawer() {
                   <h3>{product.name}</h3>
                   <p>{formatCurrency(product.discountedPrice)} each</p>
                   <div className="cart-item-actions">
-                    <div className="quantity-control">
-                      <button type="button" aria-label={`Decrease quantity of ${product.name}`} disabled={quantity <= 1 || checking}
-                        onClick={() => changeQuantity(product.id, -1)}><Minus size={15} /></button>
-                      <output aria-label="Quantity">{quantity}</output>
-                      <button type="button" aria-label={`Increase quantity of ${product.name}`}
-                        disabled={quantity >= product.stock || checking || checkError}
-                        onClick={() => changeQuantity(product.id, 1)}><Plus size={15} /></button>
-                    </div>
+                    <QuantityControl name={product.name} quantity={quantity} cannotDecrease={checking}
+                      cannotIncrease={quantity >= product.stock || checking || checkError}
+                      decrease={() => changeQuantity(product.id, -1)} increase={() => changeQuantity(product.id, 1)} />
                     <button type="button" className="icon-button cart-remove" aria-label={`Remove ${product.name}`}
                       onClick={() => remove(product.id)}><Trash2 size={17} /></button>
                   </div>

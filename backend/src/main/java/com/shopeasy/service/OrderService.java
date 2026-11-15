@@ -18,9 +18,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -97,6 +99,7 @@ public class OrderService {
         if (existing != null) {
             return replay(existing, request, items);
         }
+        validateDeliveryDetails(request);
 
         List<String> productIds = items.stream().map(OrderRequest.Item::productId).toList();
         Map<String, Product> products = operations.find(Query.query(Criteria.where("id").in(productIds)), Product.class)
@@ -120,7 +123,25 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         String reference = "SE-" + new ObjectId().toHexString().toUpperCase(Locale.ROOT);
         return operations.insert(new PurchaseOrder(key, reference, request.customerName(), request.email(),
-                Instant.now().truncatedTo(ChronoUnit.MILLIS), snapshots, total));
+                request.phone(), request.deliveryAddress(), Instant.now().truncatedTo(ChronoUnit.MILLIS), snapshots, total));
+    }
+
+    private void validateDeliveryDetails(OrderRequest request) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        if (request.phone() == null) {
+            errors.put("phone", "Enter your phone number.");
+        } else {
+            int digits = request.phone().replaceAll("[^0-9]", "").length();
+            if (digits < 7 || digits > 15) {
+                errors.put("phone", "Enter a phone number with 7 to 15 digits.");
+            }
+        }
+        if (request.deliveryAddress() == null) {
+            errors.put("deliveryAddress", "Enter your delivery address.");
+        }
+        if (!errors.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Check the highlighted fields.", errors);
+        }
     }
 
     private PurchaseOrder.Item snapshot(OrderRequest.Item item, Product product) {
@@ -140,6 +161,8 @@ public class OrderService {
 
     private PurchaseOrder replay(PurchaseOrder existing, OrderRequest request, List<OrderRequest.Item> items) {
         if (!existing.customerName().equals(request.customerName()) || !existing.email().equals(request.email())
+                || !Objects.equals(existing.phone(), request.phone())
+                || !Objects.equals(existing.deliveryAddress(), request.deliveryAddress())
                 || existing.items().size() != items.size()) {
             throw keyConflict();
         }

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ShopEasy API",
-    "description": "Run against a seeded development database. Set adminUsername and adminPassword in the active environment. The collection creates and deletes a temporary product. The optional upload is disabled by default.",
+    "description": "Use a seeded ShopEasy development database on Atlas or a local replica set. Set adminUsername and adminPassword in the active environment. The collection creates and deletes a temporary product and leaves a demo order in history. Cloudinary is optional.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -182,6 +182,267 @@
               "    if (i) pm.expect(p.price).to.be.at.least(products[i - 1].price);",
               "  });",
               "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "First catalog page",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?page=0&size=8",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "8"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const page = pm.response.json();",
+              "pm.test('Page metadata and maximum of eight active items', () => {",
+              "  pm.expect(page.page).to.eql(0); pm.expect(page.size).to.eql(8); pm.expect(page.total).to.be.at.least(16);",
+              "  pm.expect(page.items).to.have.lengthOf(8); pm.expect(page.items.every(p => p.active)).to.eql(true);",
+              "  pm.expect(page.hasNext).to.eql(true);",
+              "});",
+              "pm.environment.set('firstPageIds', JSON.stringify(page.items.map(p => p.id)));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Second catalog page",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?page=1&size=8",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "size",
+              "value": "8"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const page = pm.response.json();",
+              "const firstIds = JSON.parse(pm.environment.get('firstPageIds') || '[]');",
+              "pm.test('Second page has different products', () => {",
+              "  pm.expect(page.page).to.eql(1); pm.expect(page.items).to.have.lengthOf(8);",
+              "  pm.expect(page.items.some(p => firstIds.includes(p.id))).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Filtered page",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?search=vITamin&category=Vitamins&minPrice=300&maxPrice=600&sort=price_asc&page=0&size=1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "search",
+              "value": "vITamin"
+            },
+            {
+              "key": "category",
+              "value": "Vitamins"
+            },
+            {
+              "key": "minPrice",
+              "value": "300"
+            },
+            {
+              "key": "maxPrice",
+              "value": "600"
+            },
+            {
+              "key": "sort",
+              "value": "price_asc"
+            },
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "1"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const page = pm.response.json();",
+              "pm.test('Count reflects filters across pages', () => {",
+              "  pm.expect(page.items).to.have.lengthOf(1); pm.expect(page.total).to.be.greaterThan(1);",
+              "  pm.expect(page.items[0].name.toLowerCase()).to.include('vitamin');",
+              "  pm.expect(page.items[0].category).to.eql('Vitamins'); pm.expect(page.items[0].price).to.be.within(300,600);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject invalid catalog pagination",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?page=-1&size=8",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "-1"
+            },
+            {
+              "key": "size",
+              "value": "8"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Page field error', () => pm.expect(pm.response.json().fieldErrors).to.have.property('page'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject anonymous order history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Protected order history', () => pm.response.to.have.status(401));"
             ]
           }
         }
@@ -542,7 +803,241 @@
               "  pm.expect(p.active).to.eql(true); pm.expect(p.discountedPrice).to.eql(424.99);",
               "  pm.expect(pm.response.headers.get('Location')).to.include(p.id);",
               "});",
-              "if (p.id) { pm.environment.set('productId', p.id); pm.environment.set('productCreatedAt', p.createdAt); }"
+              "if (p.id) { pm.environment.set('productId', p.id); pm.environment.set('productCreatedAt', p.createdAt); }",
+              "pm.environment.set('orderUnitPrice', String(p.discountedPrice));",
+              "pm.environment.set('orderStockBefore', String(p.stock));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Place a guest order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{orderKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"Postman Guest\",\n  \"email\": \"postman-guest@example.com\",\n  \"phone\": \"+91 00000 12345\",\n  \"deliveryAddress\": {\n    \"line1\": \"24 Demo Lane\",\n    \"city\": \"Sample City\",\n    \"state\": \"Delhi\",\n    \"postalCode\": \"110001\",\n    \"country\": \"India\"\n  },\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"quantity\": 1, \"expectedUnitPrice\": {{orderUnitPrice}} }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.set('orderKey', pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const order = pm.response.json();",
+              "pm.test('Returns an order snapshot and total', () => {",
+              "  pm.expect(order.reference).to.match(/^SE-/); pm.expect(order.items[0].quantity).to.eql(1);",
+              "  pm.expect(order.items[0].productId).to.eql(pm.environment.get('productId'));",
+              "  pm.expect(order.total).to.eql(Number(pm.environment.get('orderUnitPrice')));",
+              "});",
+              "pm.environment.set('orderReference', order.reference);",
+              "pm.test('Keeps the saved delivery details', () => {",
+              "  pm.expect(order.phone).to.eql('+91 00000 12345');",
+              "  pm.expect(order.deliveryAddress.line1).to.eql('24 Demo Lane');",
+              "  pm.expect(order.deliveryAddress.postalCode).to.eql('110001');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Retry the original checkout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{orderKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"Postman Guest\",\n  \"email\": \"postman-guest@example.com\",\n  \"phone\": \"+91 00000 12345\",\n  \"deliveryAddress\": {\n    \"line1\": \"24 Demo Lane\",\n    \"city\": \"Sample City\",\n    \"state\": \"Delhi\",\n    \"postalCode\": \"110001\",\n    \"country\": \"India\"\n  },\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"quantity\": 1, \"expectedUnitPrice\": {{orderUnitPrice}} }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.test('Retry returns the stored order reference', () => pm.expect(pm.response.json().reference).to.eql(pm.environment.get('orderReference')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check stock after both requests",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "{{productId}}"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Stock was decremented once', () => pm.expect(pm.response.json().stock).to.eql(Number(pm.environment.get('orderStockBefore')) - 1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List admin order history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders?page=0&size=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "orders"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const page = pm.response.json();",
+              "const order = page.items.find(o => o.reference === pm.environment.get('orderReference'));",
+              "pm.test('Order is visible with its buyer and item details', () => {",
+              "  pm.expect(page.size).to.eql(10); pm.expect(order.customerName).to.eql('Postman Guest');",
+              "  pm.expect(order.email).to.eql('postman-guest@example.com');",
+              "  pm.expect(order.items[0].productName).to.be.a('string');",
+              "});",
+              "pm.test('Keeps the saved delivery details', () => {",
+              "  pm.expect(order.phone).to.eql('+91 00000 12345');",
+              "  pm.expect(order.deliveryAddress.line1).to.eql('24 Demo Lane');",
+              "  pm.expect(order.deliveryAddress.postalCode).to.eql('110001');",
+              "});"
             ]
           }
         }

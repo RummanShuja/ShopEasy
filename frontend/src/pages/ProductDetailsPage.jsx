@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { getProduct } from '../api/productsApi';
 import { PriceDisplay } from '../components/store/PriceDisplay';
+import { ProductCartAction } from '../components/store/ProductCartAction';
 import { RatingStars } from '../components/store/RatingStars';
 import { StockStatus } from '../components/store/StockStatus';
 import { ProductImage } from '../components/ui/ProductImage';
 import { StatusMessage } from '../components/ui/StatusMessage';
-import { useCart } from '../context/CartContext';
 
 export function ProductDetailsPage() {
   const { id } = useParams();
   const { state } = useLocation();
-  const { add } = useCart();
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState(null);
   const key = `${id}:${revision}`;
@@ -54,9 +53,7 @@ export function ProductDetailsPage() {
             <PriceDisplay product={product} showBadge />
             <StockStatus stock={product.stock} includeCount />
             <p className="details-description">{product.description}</p>
-            <button type="button" className="button button--primary" disabled={product.stock === 0} onClick={() => add(product)}>
-              <ShoppingBag size={18} /> Add to Cart
-            </button>
+            <ProductCartAction product={product} />
           </div>
         </article>
       )}

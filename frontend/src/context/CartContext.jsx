@@ -35,9 +35,11 @@ function cartReducer(items, action) {
         : item);
     }
     case 'quantity':
-      return items.map((item) => item.product.id === action.id
-        ? { ...item, quantity: Math.max(1, Math.min(item.product.stock, item.quantity + action.delta)) }
-        : item);
+      return items.flatMap((item) => {
+        if (item.product.id !== action.id) return [item];
+        const quantity = Math.min(item.product.stock, item.quantity + action.delta);
+        return quantity > 0 ? [{ ...item, quantity }] : [];
+      });
     case 'remove':
       return items.filter((item) => item.product.id !== action.id);
     case 'ordered':
@@ -82,7 +84,7 @@ export function CartProvider({ children }) {
       return;
     }
     dispatch({ type: 'add', product });
-    notify('Added to your cart.');
+    if (!current) notify('Added to your cart.');
   }
 
   function changeQuantity(id, delta) {

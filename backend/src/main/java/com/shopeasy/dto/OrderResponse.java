@@ -1,12 +1,17 @@
 package com.shopeasy.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.shopeasy.model.DeliveryAddress;
 import com.shopeasy.model.PurchaseOrder;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
 public record OrderResponse(
-        String reference, String customerName, String email, Instant createdAt, List<Item> items, BigDecimal total
+        String reference, String customerName, String email,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
+        @JsonInclude(JsonInclude.Include.NON_NULL) DeliveryAddress deliveryAddress,
+        Instant createdAt, List<Item> items, BigDecimal total
 ) {
     public record Item(String productId, String productName, int quantity, BigDecimal unitPrice, BigDecimal lineTotal) {}
 
@@ -14,6 +19,7 @@ public record OrderResponse(
         List<Item> items = order.items().stream()
                 .map(item -> new Item(item.productId(), item.productName(), item.quantity(), item.unitPrice(), item.lineTotal()))
                 .toList();
-        return new OrderResponse(order.reference(), order.customerName(), order.email(), order.createdAt(), items, order.total());
+        return new OrderResponse(order.reference(), order.customerName(), order.email(), order.phone(),
+                order.deliveryAddress(), order.createdAt(), items, order.total());
     }
 }

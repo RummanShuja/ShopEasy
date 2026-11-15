@@ -6,8 +6,10 @@ export function StoreFooter() {
     <footer className="store-footer">
       <div className="container footer-content">
         <Logo />
-        <p>Pharmacy and wellness essentials.</p>
-        <Link to="/admin">Admin portal</Link>
+        <nav aria-label="Footer links">
+          <Link to="/#products">Shop products</Link>
+          <Link to="/admin">Admin portal</Link>
+        </nav>
       </div>
     </footer>
   );

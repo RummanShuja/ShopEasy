@@ -1,13 +1,11 @@
-import { ShoppingBag } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
 import { ProductImage } from '../ui/ProductImage';
 import { PriceDisplay } from './PriceDisplay';
+import { ProductCartAction } from './ProductCartAction';
 import { RatingStars } from './RatingStars';
 import { StockStatus } from './StockStatus';
 
 export function ProductCard({ product }) {
-  const { add } = useCart();
   const { search } = useLocation();
   const details = `/products/${encodeURIComponent(product.id)}`;
   const linkState = { fromSearch: search };
@@ -20,14 +18,12 @@ export function ProductCard({ product }) {
       <div className="product-card-body">
         <p className="product-brand">{product.brand}</p>
         <h3><Link to={details} state={linkState}>{product.name}</Link></h3>
-        <RatingStars rating={product.rating} />
         <div className="product-card-meta">
-          <PriceDisplay product={product} />
+          <RatingStars rating={product.rating} />
           <StockStatus stock={product.stock} />
         </div>
-        <button type="button" className="button button--soft product-add" disabled={product.stock === 0} onClick={() => add(product)}>
-          <ShoppingBag size={16} aria-hidden="true" /> Add to Cart
-        </button>
+        <PriceDisplay product={product} />
+        <ProductCartAction product={product} />
       </div>
     </article>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { listOrders } from '../api/adminApi';
+import { DeliveryAddress } from '../components/ui/DeliveryAddress';
 import { Dialog } from '../components/ui/Dialog';
 import { OrderItems } from '../components/ui/OrderItems';
 import { StatusMessage } from '../components/ui/StatusMessage';
@@ -18,6 +19,10 @@ function OrderDetails({ order, onClose }) {
           <div><dt>Placed on</dt><dd><time dateTime={order.createdAt}>{orderDate.format(new Date(order.createdAt))}</time></dd></div>
           <div><dt>Customer</dt><dd>{order.customerName}</dd></div>
           <div><dt>Email</dt><dd>{order.email}</dd></div>
+          {order.phone && <div><dt>Phone</dt><dd>{order.phone}</dd></div>}
+          {order.deliveryAddress && <div className="order-delivery">
+            <dt>Delivery address</dt><dd><DeliveryAddress address={order.deliveryAddress} /></dd>
+          </div>}
         </dl>
         <h3>Items</h3>
         <OrderItems items={order.items} total={order.total} />
