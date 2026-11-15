@@ -1,0 +1,764 @@
+{
+  "info": {
+    "name": "ShopEasy API",
+    "description": "Run against a seeded development database. Set adminUsername and adminPassword in the active environment. The collection creates and deletes a temporary product. The optional upload is disabled by default.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Database-backed service is healthy', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List products",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const products = pm.response.json();",
+              "pm.test('Returns a nonempty active catalog', () => { pm.expect(products).to.be.an('array').that.is.not.empty; pm.expect(products.every(p => p.active)).to.eql(true); });",
+              "if (products.length) pm.environment.set('sampleProductId', products[0].id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List distinct categories",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/categories",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "categories"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const categories = pm.response.json();",
+              "pm.test('Categories are distinct', () => { pm.expect(categories).to.be.an('array'); pm.expect(new Set(categories).size).to.eql(categories.length); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Filter and sort products",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?search=vITamin&category=Vitamins&minPrice=300&maxPrice=600&sort=price_asc",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "search",
+              "value": "vITamin"
+            },
+            {
+              "key": "category",
+              "value": "Vitamins"
+            },
+            {
+              "key": "minPrice",
+              "value": "300"
+            },
+            {
+              "key": "maxPrice",
+              "value": "600"
+            },
+            {
+              "key": "sort",
+              "value": "price_asc"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const products = pm.response.json();",
+              "pm.test('Filters and ordering are combined', () => {",
+              "  pm.expect(products).to.be.an('array').that.is.not.empty;",
+              "  products.forEach((p, i) => {",
+              "    pm.expect(p.name.toLowerCase()).to.include('vitamin');",
+              "    pm.expect(p.category).to.eql('Vitamins'); pm.expect(p.price).to.be.within(300, 600);",
+              "    if (i) pm.expect(p.price).to.be.at.least(products[i - 1].price);",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid filter range",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products?minPrice=600&maxPrice=300",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ],
+          "query": [
+            {
+              "key": "minPrice",
+              "value": "600"
+            },
+            {
+              "key": "maxPrice",
+              "value": "300"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Returns a field error', () => pm.expect(pm.response.json().fieldErrors).to.have.property('maxPrice'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get a product",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{sampleProductId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "{{sampleProductId}}"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns the requested product and final price', () => { const p = pm.response.json(); pm.expect(p.id).to.eql(pm.environment.get('sampleProductId')); pm.expect(p.discountedPrice).to.be.at.most(p.price); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject an anonymous product write",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Travel First Aid Kit\",\n  \"description\": \"A compact kit with gauze and bandages.\",\n  \"category\": \"First Aid\",\n  \"brand\": \"CareKit\",\n  \"price\": 499.99,\n  \"discountPercent\": 15,\n  \"stock\": 12,\n  \"imageUrl\": \"{{baseUrl}}/catalog/adhesive-bandages.webp\",\n  \"rating\": 4.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin sign in",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "login"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{{loginJson}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('loginJson', JSON.stringify({ username: pm.environment.get('adminUsername'), password: pm.environment.get('adminPassword') }));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const result = pm.response.json();",
+              "pm.test('Returns a token', () => { pm.expect(result.accessToken).to.be.a('string').that.is.not.empty; pm.expect(result.expiresIn).to.be.above(0); });",
+              "if (result.accessToken) pm.environment.set('adminToken', result.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List admin inventory",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns an inventory array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject an invalid product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"X\",\n  \"description\": \"A compact kit with gauze and bandages.\",\n  \"category\": \"First Aid\",\n  \"brand\": \"CareKit\",\n  \"price\": 499.99,\n  \"discountPercent\": 15,\n  \"stock\": -1,\n  \"imageUrl\": \"{{baseUrl}}/catalog/adhesive-bandages.webp\",\n  \"rating\": 4.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Reports the name and stock errors', () => { const fields = pm.response.json().fieldErrors; pm.expect(fields).to.have.property('name'); pm.expect(fields).to.have.property('stock'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create a temporary product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Travel First Aid Kit\",\n  \"description\": \"A compact kit with gauze and bandages.\",\n  \"category\": \"First Aid\",\n  \"brand\": \"CareKit\",\n  \"price\": 499.99,\n  \"discountPercent\": 15,\n  \"stock\": 12,\n  \"imageUrl\": \"{{baseUrl}}/catalog/adhesive-bandages.webp\",\n  \"rating\": 4.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const p = pm.response.json();",
+              "pm.test('Sets an ID, a timestamp, default visibility and rounded discount', () => {",
+              "  pm.expect(p.id).to.match(/^[a-f0-9]{24}$/); pm.expect(p.createdAt).to.be.a('string');",
+              "  pm.expect(p.active).to.eql(true); pm.expect(p.discountedPrice).to.eql(424.99);",
+              "  pm.expect(pm.response.headers.get('Location')).to.include(p.id);",
+              "});",
+              "if (p.id) { pm.environment.set('productId', p.id); pm.environment.set('productCreatedAt', p.createdAt); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Update the temporary product",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "{{productId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Travel First Aid Kit\",\n  \"description\": \"A compact kit with gauze and bandages.\",\n  \"category\": \"First Aid\",\n  \"brand\": \"CareKit\",\n  \"price\": 499.99,\n  \"discountPercent\": 15,\n  \"stock\": 4,\n  \"imageUrl\": \"{{baseUrl}}/catalog/adhesive-bandages.webp\",\n  \"rating\": 4.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const p = pm.response.json();",
+              "pm.test('Updates stock and preserves the creation timestamp', () => { pm.expect(p.stock).to.eql(4); pm.expect(p.createdAt).to.eql(pm.environment.get('productCreatedAt')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete the temporary product",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "{{productId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Has no response body', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Confirm the product is gone",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products",
+            "{{productId}}"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+              "pm.test('Returns the common error object', () => pm.expect(pm.response.json().status).to.eql(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Optional Cloudinary check",
+      "item": [
+        {
+          "name": "Upload image to Cloudinary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "images"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Sign in first, enable runUpload=true in the environment, then choose a JPG, PNG, or WebP file in the Body tab.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": null
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runUpload') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns a Cloudinary HTTPS URL', () => pm.expect(pm.response.json().imageUrl).to.match(/^https:\\/\\/res\\.cloudinary\\.com\\//));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

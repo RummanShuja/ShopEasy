@@ -1,0 +1,14 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE:shopeasy_prod}
+app:
+  security:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  catalog:
+    public-api-url: ${PUBLIC_API_URL:${RENDER_EXTERNAL_URL}}
+logging:
+  level:
+    root: INFO
+    org.mongodb.driver.cluster: WARN

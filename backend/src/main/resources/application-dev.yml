@@ -1,0 +1,7 @@
+spring:
+  config:
+    import: "optional:file:./.env[.properties]"
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://127.0.0.1:27017}
+      database: ${MONGODB_DATABASE:shopeasy_dev}
