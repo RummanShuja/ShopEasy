@@ -10,6 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,23 +79,48 @@ public class ImageUploadService {
         form.add("signature", sign(timestamp));
 
         try {
-            CloudinaryImage image = cloudinary.post().uri("/v1_1/{cloud}/image/upload", cloudName)
+            var response = cloudinary.post().uri("/v1_1/{cloud}/image/upload", cloudName)
                     .contentType(MediaType.MULTIPART_FORM_DATA).body(form)
-                    .retrieve().body(CloudinaryImage.class);
+                    .retrieve().toEntity(CloudinaryImage.class);
+            CloudinaryImage image = response.getBody();
             if (image == null || !validCloudinaryUrl(image.secureUrl())) {
+                LOGGER.warn("Cloudinary HTTP {}. Reason: missing or invalid HTTPS delivery URL.",
+                        response.getStatusCode().value());
                 throw unavailable();
             }
             return new ImageUploadResponse(image.secureUrl());
-        } catch (RestClientException exception) {
-            LOGGER.warn("Cloudinary upload failed ({})", exception.getClass().getSimpleName());
-            if (exception instanceof RestClientResponseException response) {
-                var headers = response.getResponseHeaders();
-                LOGGER.warn("Cloudinary HTTP {}. Reason: {}",
-                        response.getStatusCode().value(),
-                        headers == null ? null : headers.getFirst("X-Cld-Error"));
+        } catch (RestClientResponseException response) {
+            int status = response.getStatusCode().value();
+            LOGGER.warn("Cloudinary HTTP {}. Reason: {}", status, sanitizedReason(response));
+            if (status == 403) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "Cloudinary refused the upload.",
+                        Map.of("imageUrl", "Check the API key’s asset create permission or enter an image URL."));
             }
             throw unavailable();
+        } catch (RestClientException exception) {
+            LOGGER.warn("Cloudinary upload failed ({})", exception.getClass().getSimpleName());
+            throw unavailable();
         }
+    }
+
+    private String sanitizedReason(RestClientResponseException response) {
+        var headers = response.getResponseHeaders();
+        String header = headers == null ? "" : headers.getFirst("X-Cld-Error");
+        String reason = (header + " " + response.getResponseBodyAsString()).toLowerCase(Locale.ROOT);
+        int status = response.getStatusCode().value();
+        if (status == 403 && reason.contains("create") && (reason.contains("asset") || reason.contains("permission"))) {
+            return "asset create permission required";
+        }
+        if (reason.contains("signature")) {
+            return "signature rejected";
+        }
+        return switch (status) {
+            case 400, 413, 415 -> "upload input rejected";
+            case 401 -> "credentials rejected";
+            case 403 -> "upload forbidden";
+            case 429 -> "provider rate limit";
+            default -> "provider request failed";
+        };
     }
 
     private String sign(String timestamp) {

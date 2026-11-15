@@ -6,9 +6,11 @@ spring:
 app:
   security:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    admin-password-min-length: ${ADMIN_PASSWORD_MIN_LENGTH:12}
   catalog:
     public-api-url: ${PUBLIC_API_URL:${RENDER_EXTERNAL_URL}}
+    require-public-https: true
 logging:
   level:
     root: INFO
-    org.mongodb.driver.cluster: WARN
+    org.mongodb.driver: WARN

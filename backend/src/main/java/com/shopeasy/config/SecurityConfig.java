@@ -4,13 +4,17 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.shopeasy.security.SecurityErrorHandler;
 import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -81,10 +85,24 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecretKey adminSigningKey(@Value("${app.security.jwt-secret}") String secret) {
+    SecretKey adminSigningKey(@Value("${app.security.jwt-secret}") String secret, Environment environment)
+            throws GeneralSecurityException {
+        Assert.hasText(secret, "Set ADMIN_JWT_SECRET.");
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
-        Assert.isTrue(bytes.length >= 32, "ADMIN_JWT_SECRET must be at least 32 bytes.");
-        return new SecretKeySpec(bytes, "HmacSHA256");
+        if (bytes.length >= 32) {
+            return new SecretKeySpec(bytes, "HmacSHA256");
+        }
+
+        Assert.isTrue(environment.matchesProfiles("dev & !prod"),
+                "ADMIN_JWT_SECRET must be at least 32 bytes.");
+        byte[] salt = "ShopEasy development JWT".getBytes(StandardCharsets.UTF_8);
+        PBEKeySpec spec = new PBEKeySpec(secret.toCharArray(), salt, 600_000, 256);
+        try {
+            byte[] derived = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
+            return new SecretKeySpec(derived, "HmacSHA256");
+        } finally {
+            spec.clearPassword();
+        }
     }
 
     @Bean

@@ -7,6 +7,7 @@ import com.shopeasy.model.Product;
 import com.shopeasy.repository.ProductRepository;
 import jakarta.validation.Validator;
 import java.io.InputStream;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -28,19 +29,25 @@ public class ProductDataSeeder implements CommandLineRunner {
     private final ObjectMapper mapper;
     private final Validator validator;
     private final String publicApiUrl;
+    private final boolean requirePublicHttps;
 
     public ProductDataSeeder(ProductRepository products, ObjectMapper mapper, Validator validator,
-                             @Value("${app.catalog.public-api-url}") String publicApiUrl) {
+                             @Value("${app.catalog.public-api-url}") String publicApiUrl,
+                             @Value("${app.catalog.require-public-https:false}") boolean requirePublicHttps) {
         this.products = products;
         this.mapper = mapper;
         this.validator = validator;
         this.publicApiUrl = publicApiUrl.replaceAll("/+$", "");
+        this.requirePublicHttps = requirePublicHttps;
     }
 
     @Override
     public void run(String... args) throws Exception {
         if (products.count() != 0) {
             return;
+        }
+        if (requirePublicHttps && !isPublicHttpsOrigin()) {
+            throw new IllegalStateException("Set PUBLIC_API_URL to the deployed HTTPS API origin before seeding.");
         }
         try (InputStream file = new ClassPathResource("seed/products.json").getInputStream()) {
             List<ProductRequest> fixtures = mapper.readValue(file, new TypeReference<>() {});
@@ -59,6 +66,19 @@ public class ProductDataSeeder implements CommandLineRunner {
             }
             products.insert(catalog);
             LOGGER.info("Seeded {} catalog products", catalog.size());
+        }
+    }
+
+    private boolean isPublicHttpsOrigin() {
+        try {
+            URI origin = URI.create(publicApiUrl);
+            return "https".equalsIgnoreCase(origin.getScheme()) && origin.getHost() != null
+                    && !origin.getHost().toLowerCase(java.util.Locale.ROOT)
+                            .matches("(?:.+\\.)?localhost\\.?|127\\..*|0\\.0\\.0\\.0|\\[::1\\]")
+                    && origin.getPath().isEmpty() && origin.getQuery() == null && origin.getFragment() == null
+                    && origin.getUserInfo() == null;
+        } catch (IllegalArgumentException failure) {
+            return false;
         }
     }
 }

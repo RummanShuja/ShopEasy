@@ -11,5 +11,6 @@ RUN groupadd --system shop && useradd --system --gid shop shop
 COPY --from=build /build/target/shopeasy-api.jar /app/shopeasy-api.jar
 USER shop
 ENV SPRING_PROFILES_ACTIVE=prod
-EXPOSE 8080
+ENV PORT=10000
+EXPOSE 10000
 ENTRYPOINT ["java", "-jar", "/app/shopeasy-api.jar"]

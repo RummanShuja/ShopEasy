@@ -29,11 +29,15 @@ public class AdminTokenService {
 
     public AdminTokenService(@Value("${app.security.admin-username}") String username,
                              @Value("${app.security.admin-password}") String password,
+                             @Value("${app.security.admin-password-min-length}") int minimumLength,
                              PasswordEncoder passwords, JwtEncoder tokens) {
         Assert.hasText(username, "Set ADMIN_USERNAME.");
         Assert.isTrue(username.length() <= 100, "ADMIN_USERNAME must be at most 100 characters.");
-        Assert.isTrue(password.length() >= 6 && password.getBytes(StandardCharsets.UTF_8).length <= 72,
-                "ADMIN_PASSWORD must be at least 6 characters and at most 72 UTF-8 bytes.");
+        Assert.isTrue(minimumLength >= 6 && minimumLength <= 72,
+                "ADMIN_PASSWORD_MIN_LENGTH must be from 6 to 72.");
+        Assert.isTrue(password.codePointCount(0, password.length()) >= minimumLength
+                        && password.getBytes(StandardCharsets.UTF_8).length <= 72,
+                "ADMIN_PASSWORD must be at least " + minimumLength + " characters and at most 72 UTF-8 bytes.");
         this.username = username;
         this.passwordHash = passwords.encode(password);
         this.passwords = passwords;
