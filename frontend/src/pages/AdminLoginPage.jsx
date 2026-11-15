@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Logo } from '../components/layout/Logo';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
@@ -9,7 +9,8 @@ export function AdminLoginPage() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const { token, signIn } = useAdminAuth();
-  if (token) return <Navigate replace to="/admin" />;
+  const { state } = useLocation();
+  if (token) return <Navigate replace to={state?.from === '/admin/orders' ? '/admin/orders' : '/admin'} />;
 
   async function submit(event) {
     event.preventDefault();
@@ -36,7 +37,7 @@ export function AdminLoginPage() {
       <section className="login-card">
         <span className="status-icon"><LockKeyhole size={25} /></span>
         <h1>Admin sign in</h1>
-        <p>Sign in to manage the ShopEasy catalog.</p>
+        <p>Manage ShopEasy inventory and view orders.</p>
         <form onSubmit={submit}>
           <div className="form-field">
             <label htmlFor="admin-username">Username</label>

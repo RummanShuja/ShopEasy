@@ -2,10 +2,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { placeOrder } from '../api/ordersApi';
+import { OrderItems } from '../components/ui/OrderItems';
 import { StatusMessage } from '../components/ui/StatusMessage';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency } from '../utils/formatCurrency';
 
 const ATTEMPT_KEY = 'shopeasy-checkout-attempt-v1';
 const EMPTY_CUSTOMER = { customerName: '', email: '' };
@@ -36,18 +36,7 @@ function OrderSummary({ lines, total, children }) {
   return (
     <section className="checkout-panel checkout-summary" aria-label="Order summary">
       <h2><ShoppingBag size={20} /> Order summary</h2>
-      <ul className="checkout-lines">
-        {lines.map((item) => (
-          <li key={item.productId}>
-            <div>
-              <strong>{item.productName}</strong>
-              <span>{item.quantity} × {formatCurrency(item.unitPrice)}</span>
-            </div>
-            <strong>{formatCurrency(item.lineTotal)}</strong>
-          </li>
-        ))}
-      </ul>
-      <div className="checkout-total"><strong>Grand total</strong><strong>{formatCurrency(total)}</strong></div>
+      <OrderItems items={lines} total={total} />
       {children}
     </section>
   );

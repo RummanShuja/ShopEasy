@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { AdminLayout } from './components/layout/AdminLayout';
 import { StoreLayout } from './components/layout/StoreLayout';
 import { AdminAuthProvider } from './context/AdminAuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
+import { AdminOrdersPage } from './pages/AdminOrdersPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProductDetailsPage } from './pages/ProductDetailsPage';
@@ -38,7 +40,10 @@ export default function App() {
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
               <Route path="admin/login" element={<AdminLoginPage />} />
-              <Route path="admin" element={<AdminDashboardPage />} />
+              <Route path="admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+              </Route>
             </Routes>
           </CartProvider>
         </AdminAuthProvider>
