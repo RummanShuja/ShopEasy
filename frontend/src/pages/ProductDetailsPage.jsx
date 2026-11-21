@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Leaf, PackageCheck, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { getProduct } from '../api/productsApi';
 import { PriceDisplay } from '../components/store/PriceDisplay';
@@ -53,10 +53,12 @@ export function ProductDetailsPage() {
             <PriceDisplay product={product} showBadge />
             <StockStatus stock={product.stock} includeCount />
             <p className="details-description">{product.description}</p>
-            <ProductCartAction product={product} />
+            <ProductCartAction product={product} details />
+            <div className="details-assurances"><span><ShieldCheck size={17} /> Secure checkout</span><span><PackageCheck size={17} /> Care at your doorstep</span></div>
           </div>
         </article>
       )}
+      {!loading && product && <section className="product-care-note"><Leaf size={27} strokeWidth={1.2} /><div><h2>A little care, thoughtfully chosen.</h2><p>Read the product label before use. For questions about medicines or supplements, consult your healthcare professional.</p></div></section>}
     </div>
   );
 }

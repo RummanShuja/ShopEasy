@@ -1,48 +1,33 @@
-import { ArrowDownUp, ChevronDown, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 
-export function ProductFilters({ params, onChange, onClear }) {
-  const anyFilters = ['search', 'category', 'minPrice', 'maxPrice', 'sort'].some((key) => params.has(key));
-  const setField = (event) => onChange(event.target.name, event.target.value);
-
-  return (
-    <aside className="catalog-filters" aria-labelledby="filters-heading">
-      <h3 id="filters-heading"><SlidersHorizontal size={17} aria-hidden="true" /> Filters</h3>
-      <fieldset className="price-filters">
-        <legend>Price range</legend>
-        <div className="price-fields">
-          <label>Min
-            <span className="money-input"><span aria-hidden="true">₹</span>
-              <input type="number" name="minPrice" aria-label="Minimum price" min="0" step="0.01" placeholder="Any"
-                value={params.get('minPrice') || ''} onChange={setField} />
-            </span>
-          </label>
-          <label>Max
-            <span className="money-input"><span aria-hidden="true">₹</span>
-              <input type="number" name="maxPrice" aria-label="Maximum price" min="0" step="0.01" placeholder="Any"
-                value={params.get('maxPrice') || ''} onChange={setField} />
-            </span>
-          </label>
-        </div>
-      </fieldset>
-      {anyFilters && <button type="button" className="clear-filters" onClick={onClear}>
-        <X size={15} aria-hidden="true" /> Clear filters
-      </button>}
-    </aside>
-  );
+export function ProductFilters({ params, categories = [], onChange, onClear, mobile = false }) {
+  const any = ['search', 'category', 'minPrice', 'maxPrice', 'minRating', 'inStock', 'offersOnly'].some((key) => params.has(key));
+  return <aside className={`catalog-filters${mobile ? ' mobile-filters' : ''}`} aria-label="Product filters">
+    <h3><SlidersHorizontal size={19} /> Filters{any && <button className="text-button" onClick={onClear}>Reset</button>}</h3>
+    <details className="filter-group" open><summary>Category <ChevronDown size={16} /></summary><div className="filter-options">
+      {['', ...categories].map((name) => <label key={name}><input type="radio" name={mobile ? 'mobile-category' : 'category'} checked={(params.get('category') || '') === name}
+        onChange={() => onChange('category', name)} />{name || 'All products'}</label>)}
+    </div></details>
+    <details className="filter-group" open><summary>Price range <ChevronDown size={16} /></summary><p className="filter-help">Original price, before discounts</p>
+      <div className="price-fields">{['minPrice', 'maxPrice'].map((name) => <label key={name}>{name === 'minPrice' ? 'From' : 'To'}
+        <span className="money-input"><span>₹</span><input type="number" name={name} aria-label={name === 'minPrice' ? 'Minimum price' : 'Maximum price'} min="0" step="1" placeholder={name === 'minPrice' ? '0' : 'Any'}
+          value={params.get(name) || ''} onChange={(event) => onChange(name, event.target.value)} /></span></label>)}</div>
+    </details>
+    <details className="filter-group" open><summary>Rating <ChevronDown size={16} /></summary><div className="filter-options">
+      <label><input type="checkbox" checked={params.get('minRating') === '4'} onChange={(event) => onChange('minRating', event.target.checked ? '4' : '')} />4 stars & above <span className="filter-star">★</span></label>
+    </div></details>
+    <details className="filter-group" open><summary>Availability <ChevronDown size={16} /></summary><div className="filter-options">
+      <label><input type="checkbox" checked={params.get('inStock') === 'true'} onChange={(event) => onChange('inStock', event.target.checked ? 'true' : '')} />In stock only</label>
+    </div></details>
+    <details className="filter-group" open><summary>Offers <ChevronDown size={16} /></summary><div className="filter-options">
+      <label><input type="checkbox" checked={params.get('offersOnly') === 'true'} onChange={(event) => onChange('offersOnly', event.target.checked ? 'true' : '')} />Offers only</label>
+    </div></details>
+    {any && <button className="clear-filters" onClick={onClear}><X size={14} /> Clear all filters</button>}
+    <div className="filter-note"><span className="eyebrow">A little guidance</span><p>Choose care that feels right for you.</p><span>Always follow the product label and your healthcare professional’s advice.</span></div>
+  </aside>;
 }
-
 export function ProductSort({ value, onChange }) {
-  return (
-    <label className="select-wrap sort-control">
-      <ArrowDownUp size={16} aria-hidden="true" />
-      <span className="sr-only">Sort products</span>
-      <select name="sort" value={value || 'newest'} onChange={(event) => onChange(event.target.value)}>
-        <option value="newest">Newest</option>
-        <option value="price_asc">Price low to high</option>
-        <option value="price_desc">Price high to low</option>
-        <option value="rating">Highest rated</option>
-      </select>
-      <ChevronDown size={15} aria-hidden="true" />
-    </label>
-  );
+  return <label className="select-wrap sort-control"><span>Sort by:</span><select name="sort" aria-label="Sort products" value={value || 'newest'} onChange={(event) => onChange(event.target.value)}>
+    <option value="newest">Featured</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="rating">Highest rated</option>
+  </select><ChevronDown size={15} /></label>;
 }

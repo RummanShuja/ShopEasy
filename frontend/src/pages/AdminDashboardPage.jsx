@@ -18,6 +18,10 @@ export function AdminDashboardPage() {
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
+  const visibleProducts = inventory?.filter((product) => `${product.name} ${product.category} ${product.brand}`.toLowerCase().includes(search.toLowerCase())
+    && (stockFilter === 'all' || (stockFilter === 'low' ? product.stock > 0 && product.stock <= 10 : product.stock === 0)));
 
   useEffect(() => {
     if (!token) return undefined;
@@ -69,9 +73,11 @@ export function AdminDashboardPage() {
         <>
           <InventorySummary products={inventory} />
           <section className="inventory-panel" aria-labelledby="inventory-title">
-            <div className="inventory-panel-heading"><h2 id="inventory-title">Products</h2><p>{inventory.length} in inventory</p></div>
-            {inventory.length > 0
-              ? <ProductTable products={inventory} onEdit={(product) => setEditor({ product })} onDelete={setDeleting} />
+            <div className="management-toolbar"><div><h2 id="inventory-title">Products</h2><p>{visibleProducts.length} of {inventory.length} products</p></div>
+              <label className="management-search"><input aria-label="Search inventory" placeholder="Search products, brands, categories…" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+              <select aria-label="Filter inventory stock" className="management-select" value={stockFilter} onChange={(event) => setStockFilter(event.target.value)}><option value="all">All inventory</option><option value="low">Low stock</option><option value="empty">Out of stock</option></select></div>
+            {visibleProducts.length > 0
+              ? <ProductTable products={visibleProducts} onEdit={(product) => setEditor({ product })} onDelete={setDeleting} />
               : <StatusMessage title="No products yet" message="Add your first product to start building the catalog." />}
           </section>
         </>

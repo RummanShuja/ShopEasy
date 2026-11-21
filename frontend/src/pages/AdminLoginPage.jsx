@@ -10,7 +10,7 @@ export function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
   const { token, signIn } = useAdminAuth();
   const { state } = useLocation();
-  if (token) return <Navigate replace to={state?.from === '/admin/orders' ? '/admin/orders' : '/admin'} />;
+  if (token) return <Navigate replace to={['/admin/orders', '/admin/products'].includes(state?.from) ? state.from : '/admin'} />;
 
   async function submit(event) {
     event.preventDefault();

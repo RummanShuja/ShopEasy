@@ -1,17 +1,15 @@
 import { ArrowRight } from 'lucide-react';
-import heroImage from '../../assets/wellness-hero.webp';
+import { Link } from 'react-router-dom';
+import heroImage from '../../assets/pharmacy-hero.png';
 
-export function HeroBanner() {
-  return (
-    <section className="hero" aria-labelledby="hero-title">
-      <div className="hero-copy">
-        <h1 id="hero-title">Care for<br /><span>every day.</span></h1>
-        <p>Shop first aid, vitamins, and personal care for you and your home.</p>
-        <a className="button button--primary hero-button" href="#products">Shop Now <ArrowRight size={19} aria-hidden="true" /></a>
-      </div>
-      <div className="hero-media">
-        <img className="hero-image" src={heroImage} alt="" fetchPriority="high" width="1536" height="1024" />
-      </div>
-    </section>
-  );
+export function HeroBanner({ shop = false, offers = false }) {
+  return <section className={`hero${shop ? ' hero--shop' : ''}`} aria-labelledby="hero-title">
+    <img className="hero-image" src={heroImage} alt="ShopEasy daily vitamins and skincare on warm stone with sunlit leaves" fetchPriority="high" width="2172" height="724" />
+    <div className="container hero-inner"><div className="hero-copy"><span className="eyebrow">{offers ? 'Shop / Offers' : shop ? 'Shop / Everyday essentials' : 'Your everyday wellbeing, thoughtfully considered'}</span>
+      <h1 id="hero-title">{offers ? <>Everyday care,<br />extra value.</> : shop ? <>Wellness for<br />everyday living.</> : <>Care,<br />thoughtfully<br />delivered.</>}</h1>
+      <p>{offers ? 'Explore current offers on your everyday essentials. A little more care, for a little less.' : shop ? 'Discover vitamins, personal care, and everyday essentials for a little more wellbeing.' : 'Everyday wellness, personal care, and a little peace of mind. All in one thoughtful place.'}</p>
+      {!shop && <div className="hero-actions"><Link className="button button--primary" to="/shop">Shop essentials <ArrowRight size={19} /></Link>
+        <Link className="button button--secondary" to="/shop?category=Vitamins">Explore wellness</Link></div>}
+    </div></div>
+  </section>;
 }

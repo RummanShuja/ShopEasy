@@ -7,6 +7,7 @@ import { OrderItems } from '../components/ui/OrderItems';
 import { StatusMessage } from '../components/ui/StatusMessage';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { useCustomerAuth } from '../context/CustomerAuthContext';
 
 const ATTEMPT_KEY = 'shopeasy-checkout-attempt-v1';
 const EMPTY_ADDRESS = { line1: '', line2: '', city: '', state: '', postalCode: '', country: 'India' };
@@ -24,10 +25,10 @@ const ADDRESS_FIELDS = [
   { name: 'country', label: 'Country', autoComplete: 'shipping country-name', maxLength: 80 },
 ];
 
-function readAttempt() {
+function readAttempt(owner) {
   try {
     const saved = JSON.parse(sessionStorage.getItem(ATTEMPT_KEY));
-    return saved?.key && Array.isArray(saved.body?.items) && Array.isArray(saved.lines) ? saved : null;
+    return (saved?.owner || 'guest') === owner && saved?.key && Array.isArray(saved.body?.items) && Array.isArray(saved.lines) ? saved : null;
   } catch {
     return null;
   }
@@ -75,14 +76,15 @@ function CheckoutFields({ definitions, values, errors, readOnly, prefix = '', on
 }
 
 export function CheckoutPage() {
-  const { items, subtotal, openCart, completeOrder, checking, checkError, refresh } = useCart();
+  const { items, subtotal, openCart, completeOrder, checking, checkError, refresh, busy: cartBusy, ready } = useCart();
+  const { customer: profile, token } = useCustomerAuth();
   const notify = useToast();
   const submitting = useRef(false);
   const confirmationHeading = useRef(null);
-  const [attempt, setAttempt] = useState(readAttempt);
+  const [attempt, setAttempt] = useState(() => readAttempt(profile?.id || 'guest'));
   const [customer, setCustomer] = useState(() => ({
-    customerName: attempt?.body.customerName ?? '',
-    email: attempt?.body.email ?? '',
+    customerName: attempt?.body.customerName ?? profile?.name ?? '',
+    email: attempt?.body.email ?? profile?.email ?? '',
     phone: attempt?.body.phone ?? '',
   }));
   const [address, setAddress] = useState(() => ({ ...EMPTY_ADDRESS, ...attempt?.body.deliveryAddress }));
@@ -118,7 +120,7 @@ export function CheckoutPage() {
 
   async function submit(event) {
     event.preventDefault();
-    if (submitting.current || mustReview || !lines.length) return;
+    if (submitting.current || mustReview || !lines.length || checking || cartBusy || !ready) return;
     let pending = attempt;
 
     if (!pending) {
@@ -149,6 +151,7 @@ export function CheckoutPage() {
       }
 
       pending = {
+        owner: profile?.id || 'guest',
         key: globalThis.crypto.randomUUID(),
         body: { ...details, items: lines.map(({ productId, quantity, unitPrice }) => ({
           productId, quantity, expectedUnitPrice: unitPrice,
@@ -164,10 +167,10 @@ export function CheckoutPage() {
     setBusy(true);
     setMessage('');
     try {
-      const confirmation = await placeOrder(pending.body, pending.key);
+      const confirmation = await placeOrder(pending.body, pending.key, token);
       storeAttempt(null);
       setAttempt(null);
-      completeOrder(confirmation);
+      await completeOrder(confirmation);
       setOrder(confirmation);
       notify('Order placed.');
     } catch (error) {
@@ -209,6 +212,7 @@ export function CheckoutPage() {
             </div>
           )}
           <Link className="button button--primary" to="/#products">Continue shopping <ArrowRight size={17} /></Link>
+          {profile && <Link className="button button--secondary" to={`/orders/${encodeURIComponent(order.id)}`}>Track your order <ArrowRight size={17} /></Link>}
         </section>
         <OrderSummary lines={order.items} total={order.total} />
       </div>
@@ -248,7 +252,7 @@ export function CheckoutPage() {
                 ? <button className="button button--primary" type="button" disabled={checking} onClick={reviewCart}>
                     {checking ? 'Refreshing cart…' : 'Refresh cart'} <ArrowRight size={17} />
                   </button>
-                : <button className="button button--primary" type="submit" disabled={busy || checking}>
+                : <button className="button button--primary" type="submit" disabled={busy || checking || cartBusy || !ready}>
                     {busy ? 'Placing order…' : attempt ? 'Retry order' : 'Place order'} <ArrowRight size={17} />
                   </button>}
               {!attempt && <button type="button" className="text-button" onClick={openCart}>Edit cart</button>}

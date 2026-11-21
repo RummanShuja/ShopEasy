@@ -7,14 +7,14 @@ import { ProductImage } from '../ui/ProductImage';
 import { QuantityControl } from '../ui/QuantityControl';
 
 export function CartDrawer() {
-  const { items, count, subtotal, changeQuantity, remove, closeCart, checking, checkError, refresh } = useCart();
+  const { items, count, subtotal, changeQuantity, remove, closeCart, checking, checkError, busy, ready, retrySync } = useCart();
 
   return (
     <Dialog className="cart-drawer" title={`Your cart (${count})`} onClose={closeCart}>
       <div className="cart-content">
         {checking && <p className="cart-note" role="status">Checking prices and stock…</p>}
         {checkError && <div className="cart-note" role="alert">
-          Prices and stock could not be refreshed. <button className="text-button" type="button" onClick={refresh}>Retry</button>
+          Your cart could not be synced. <button className="text-button" type="button" onClick={retrySync}>Retry</button>
         </div>}
         {items.length === 0 ? (
           <div className="cart-empty">
@@ -31,11 +31,11 @@ export function CartDrawer() {
                   <h3>{product.name}</h3>
                   <p>{formatCurrency(product.discountedPrice)} each</p>
                   <div className="cart-item-actions">
-                    <QuantityControl name={product.name} quantity={quantity} cannotDecrease={checking}
-                      cannotIncrease={quantity >= product.stock || checking || checkError}
+                    <QuantityControl name={product.name} quantity={quantity} cannotDecrease={checking || busy || !ready}
+                      cannotIncrease={quantity >= product.stock || checking || checkError || busy || !ready}
                       decrease={() => changeQuantity(product.id, -1)} increase={() => changeQuantity(product.id, 1)} />
                     <button type="button" className="icon-button cart-remove" aria-label={`Remove ${product.name}`}
-                      onClick={() => remove(product.id)}><Trash2 size={17} /></button>
+                      disabled={busy || checking || !ready} onClick={() => remove(product.id)}><Trash2 size={17} /></button>
                   </div>
                   {quantity === product.stock && <span className="cart-limit">Available stock limit reached</span>}
                 </div>
@@ -49,7 +49,7 @@ export function CartDrawer() {
         <div className="cart-totals">
           <div><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
           <div><strong>Grand total</strong><strong>{formatCurrency(subtotal)}</strong></div>
-          <Link className="button button--primary" to="/checkout" onClick={closeCart}>
+          <Link className="button button--primary" aria-disabled={busy || checking || !ready} to="/checkout" onClick={(event) => { if (busy || checking || !ready) event.preventDefault(); else closeCart(); }}>
             Checkout <ArrowRight size={17} />
           </Link>
         </div>

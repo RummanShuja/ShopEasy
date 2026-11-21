@@ -1,0 +1,9 @@
+Generated using the built-in Imagegen tool.
+Asset: pharmacy-hero.png
+
+Use case: product-mockup. Asset type: production ecommerce website hero photograph, widescreen 3:1 composition.
+Premium ShopEasy pharmacy and wellness still life for a warm cream and deep forest green editorial storefront.
+Sunlit ivory plaster wall and beige travertine podium. On the right half: amber glass vitamin bottle with a dark ribbed cap,
+ivory label reading "ShopEasy" and "Daily Multivitamin", a small ivory skincare tube, three pale tablets, and an olive green leafy branch.
+The left half is clean warm ivory negative space for the HTML headline. Photorealistic product photography, soft directional
+afternoon sunlight, natural grain and realistic shadows. No watermark, page UI, graphic headings, or medical claims.

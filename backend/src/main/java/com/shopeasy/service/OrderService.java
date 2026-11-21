@@ -12,6 +12,8 @@ import com.shopeasy.dto.PageResponse;
 import com.shopeasy.exception.ApiException;
 import com.shopeasy.model.Product;
 import com.shopeasy.model.PurchaseOrder;
+import com.shopeasy.model.CustomerCart;
+import com.shopeasy.model.OrderStatus;
 import com.shopeasy.repository.OrderRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -52,7 +54,7 @@ public class OrderService {
         this.orders = orders;
     }
 
-    public OrderResponse place(String idempotencyKey, OrderRequest request) {
+    public OrderResponse place(String idempotencyKey, OrderRequest request, String customerId) {
         String key = checkoutKey(idempotencyKey);
         List<OrderRequest.Item> items = request.items().stream()
                 .sorted(Comparator.comparing(OrderRequest.Item::productId)).toList();
@@ -63,7 +65,7 @@ public class OrderService {
         try (var session = client.startSession()) {
             PurchaseOrder order = session.withTransaction(() -> {
                 try {
-                    return saveOrder(mongo.withSession(session), key, request, items);
+                    return saveOrder(mongo.withSession(session), key, request, items, customerId);
                 } catch (DataAccessException failure) {
                     // The MongoDB driver reads error labels to retry transactions and commits safely.
                     if (failure.getCause() instanceof MongoException mongoFailure) {
@@ -77,7 +79,7 @@ public class OrderService {
             if (ErrorCategory.fromErrorCode(failure.getCode()) == ErrorCategory.DUPLICATE_KEY) {
                 PurchaseOrder existing = orders.findById(key).orElse(null);
                 if (existing != null) {
-                    return OrderResponse.from(replay(existing, request, items));
+                    return OrderResponse.from(replay(existing, request, items, customerId));
                 }
             }
             if (failure.getCode() == 20) {
@@ -94,10 +96,10 @@ public class OrderService {
     }
 
     private PurchaseOrder saveOrder(MongoOperations operations, String key, OrderRequest request,
-                                    List<OrderRequest.Item> items) {
+                                    List<OrderRequest.Item> items, String customerId) {
         PurchaseOrder existing = operations.findById(key, PurchaseOrder.class);
         if (existing != null) {
-            return replay(existing, request, items);
+            return replay(existing, request, items, customerId);
         }
         validateDeliveryDetails(request);
 
@@ -122,8 +124,21 @@ public class OrderService {
         BigDecimal total = snapshots.stream().map(PurchaseOrder.Item::lineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         String reference = "SE-" + new ObjectId().toHexString().toUpperCase(Locale.ROOT);
-        return operations.insert(new PurchaseOrder(key, reference, request.customerName(), request.email(),
-                request.phone(), request.deliveryAddress(), Instant.now().truncatedTo(ChronoUnit.MILLIS), snapshots, total));
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        PurchaseOrder placed = operations.insert(new PurchaseOrder(key, reference, request.customerName(), request.email(),
+                request.phone(), request.deliveryAddress(), now, snapshots, total, customerId, OrderStatus.PENDING,
+                List.of(new PurchaseOrder.StatusEvent(OrderStatus.PENDING, now, "Order placed")), 0L));
+        if (customerId != null) {
+            CustomerCart cart = operations.findById(customerId, CustomerCart.class);
+            if (cart != null) {
+                Map<String, Integer> purchased = items.stream().collect(Collectors.toMap(OrderRequest.Item::productId, OrderRequest.Item::quantity));
+                List<CustomerCart.Entry> remaining = cart.items().stream()
+                        .map(line -> new CustomerCart.Entry(line.productId(), line.quantity() - purchased.getOrDefault(line.productId(), 0)))
+                        .filter(line -> line.quantity() > 0).toList();
+                operations.save(new CustomerCart(cart.id(), remaining, cart.appliedMerges(), cart.version()));
+            }
+        }
+        return placed;
     }
 
     private void validateDeliveryDetails(OrderRequest request) {
@@ -159,8 +174,9 @@ public class OrderService {
                 price.multiply(BigDecimal.valueOf(item.quantity())));
     }
 
-    private PurchaseOrder replay(PurchaseOrder existing, OrderRequest request, List<OrderRequest.Item> items) {
-        if (!existing.customerName().equals(request.customerName()) || !existing.email().equals(request.email())
+    private PurchaseOrder replay(PurchaseOrder existing, OrderRequest request, List<OrderRequest.Item> items, String customerId) {
+        if (!Objects.equals(existing.customerId(), customerId)
+                || !existing.customerName().equals(request.customerName()) || !existing.email().equals(request.email())
                 || !Objects.equals(existing.phone(), request.phone())
                 || !Objects.equals(existing.deliveryAddress(), request.deliveryAddress())
                 || existing.items().size() != items.size()) {

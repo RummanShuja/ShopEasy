@@ -29,6 +29,12 @@ export async function request(path, { token, body, headers, ...options } = {}) {
   if (response.status === 204) return null;
   const data = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      try {
+        if (sessionStorage.getItem('shopeasy-customer-session') === token)
+          window.dispatchEvent(new Event('shopeasy-session-expired'));
+      } catch { /* Storage can be unavailable. */ }
+    }
     throw new ApiError(response.status, data?.message || 'Something went wrong. Please try again.', data?.fieldErrors);
   }
   if (data === null) throw new ApiError(response.status, 'The server returned an unexpected response.');

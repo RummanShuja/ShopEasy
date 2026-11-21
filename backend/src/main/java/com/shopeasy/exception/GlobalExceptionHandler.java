@@ -18,10 +18,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> invalidParameter(MethodArgumentTypeMismatchException exception) {
+        return respond(HttpStatus.BAD_REQUEST, "Check the request parameters.", Map.of(exception.getName(), "Enter a supported value."));
+    }
 
     @ExceptionHandler(BindException.class)
     ResponseEntity<ApiError> invalidFields(BindException exception) {

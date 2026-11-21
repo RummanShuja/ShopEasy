@@ -3,6 +3,7 @@ package com.shopeasy.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.DecimalMax;
 import java.math.BigDecimal;
 
 public record ProductFilter(
@@ -10,5 +11,8 @@ public record ProductFilter(
         String category,
         @DecimalMin("0") BigDecimal minPrice,
         @DecimalMin("0") BigDecimal maxPrice,
-        @Pattern(regexp = "price_asc|price_desc|rating|newest", message = "Use price_asc, price_desc, rating, or newest") String sort
+        @Pattern(regexp = "price_asc|price_desc|rating|newest", message = "Use price_asc, price_desc, rating, or newest") String sort,
+        @DecimalMin("0") @DecimalMax("5") BigDecimal minRating,
+        Boolean inStock,
+        Boolean offersOnly
 ) {}

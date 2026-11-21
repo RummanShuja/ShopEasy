@@ -1,151 +1,156 @@
-import { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { getProduct } from '../api/productsApi';
+import { request } from '../api/http';
+import { useCustomerAuth } from './CustomerAuthContext';
 import { useToast } from './ToastContext';
 
 const CART_KEY = 'shopeasy-cart-v1';
+const MERGE_KEY = 'shopeasy-guest-merge';
 const CartContext = createContext(null);
-
-function readCart() {
+function readGuest() {
   try {
     const items = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-    if (!Array.isArray(items)) return [];
     const seen = new Set();
-    return items.filter((item) => {
-      if (typeof item?.product?.id !== 'string' || seen.has(item.product.id)
-          || !Number.isInteger(item.quantity) || item.quantity < 1
-          || !Number.isInteger(item.product.stock) || item.quantity > item.product.stock
-          || !Number.isFinite(item.product.discountedPrice) || item.product.discountedPrice < 0) return false;
-      seen.add(item.product.id);
-      return true;
-    });
-  } catch {
-    return [];
-  }
+    return Array.isArray(items) ? items.filter((line) => {
+      if (!line?.product?.id || seen.has(line.product.id) || !Number.isInteger(line.quantity) || line.quantity < 1
+        || !Number.isFinite(line.product.discountedPrice)) return false;
+      seen.add(line.product.id); return true;
+    }) : [];
+  } catch { return []; }
 }
-
-function cartReducer(items, action) {
-  switch (action.type) {
-    case 'add': {
-      const product = action.product;
-      if (product.stock < 1) return items;
-      const exists = items.some((item) => item.product.id === product.id);
-      if (!exists) return [...items, { product, quantity: 1 }];
-      return items.map((item) => item.product.id === product.id
-        ? { product, quantity: Math.min(product.stock, item.quantity + 1) }
-        : item);
-    }
-    case 'quantity':
-      return items.flatMap((item) => {
-        if (item.product.id !== action.id) return [item];
-        const quantity = Math.min(item.product.stock, item.quantity + action.delta);
-        return quantity > 0 ? [{ ...item, quantity }] : [];
-      });
-    case 'remove':
-      return items.filter((item) => item.product.id !== action.id);
-    case 'ordered':
-      return items.flatMap((item) => {
-        const quantity = item.quantity - (action.quantities.get(item.product.id) || 0);
-        return quantity > 0 ? [{ ...item, quantity }] : [];
-      });
-    case 'refresh':
-      return items.flatMap((item) => {
-        if (!action.products.has(item.product.id)) return [item];
-        const latest = action.products.get(item.product.id);
-        return latest?.stock > 0 ? [{ product: latest, quantity: Math.min(item.quantity, latest.stock) }] : [];
-      });
-    default:
-      return items;
-  }
+function saveGuest(items) {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(items)); localStorage.removeItem(MERGE_KEY); } catch { /* The cart remains in memory. */ }
+}
+function mergeId() {
+  try {
+    const existing = localStorage.getItem(MERGE_KEY);
+    if (existing) return existing;
+    const id = crypto.randomUUID(); localStorage.setItem(MERGE_KEY, id); return id;
+  } catch { return crypto.randomUUID(); }
 }
 
 export function CartProvider({ children }) {
-  const [items, dispatch] = useReducer(cartReducer, null, readCart);
+  const auth = useCustomerAuth();
+  const notify = useToast();
+  const scope = auth.token ? auth.customer?.id || 'restoring' : 'guest';
+  const [state, setState] = useState(() => ({ scope: 'guest', items: readGuest() }));
   const [isOpen, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const lock = useRef(false);
   const confirmed = useRef(new Set());
-  const notify = useToast();
+  const activeScope = useRef(scope);
+  useEffect(() => { activeScope.current = scope; }, [scope]);
+  const items = state.scope === scope ? state.items : [];
+  const report = useCallback((result) => {
+    if (result.adjustments?.length) notify(result.adjustments.join(' '));
+  }, [notify]);
 
   useEffect(() => {
+    if (auth.restoring || scope === 'restoring') return undefined;
+    const controller = new AbortController();
+    if (scope === 'guest') { setState({ scope, items: readGuest() }); setCheckError(false); setChecking(false); return undefined; }
+    setChecking(true); setCheckError(false);
+    const guest = readGuest();
+    const pending = guest.length
+      ? request('/api/cart/merge', { method: 'POST', token: auth.token, signal: controller.signal,
+          body: { mergeId: mergeId(), items: guest.map((line) => ({ productId: line.product.id, quantity: line.quantity })) } })
+      : request('/api/cart', { token: auth.token, signal: controller.signal });
+    pending.then((result) => {
+      if (controller.signal.aborted) return;
+      if (guest.length) saveGuest([]);
+      setState({ scope, items: result.items }); report(result); setChecking(false);
+    }).catch((error) => {
+      if (controller.signal.aborted) return;
+      setChecking(false); setCheckError(true); notify(error.message, 'error');
+    });
+    return () => controller.abort();
+  }, [auth.token, auth.restoring, scope, revision, notify, report]);
+
+  async function update(product, quantity) {
+    if (lock.current || checking || checkError || auth.restoring || scope === 'restoring' || (scope !== 'guest' && state.scope !== scope)) return false;
+    if (quantity > product.stock) { notify('The available stock limit has been reached.', 'error'); return false; }
+    lock.current = true; setBusy(true);
+    const owner = scope;
     try {
-      localStorage.setItem(CART_KEY, JSON.stringify(items));
-    } catch {
-      // The current cart remains usable when browser storage is unavailable.
-    }
-  }, [items]);
-
-  const count = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce((sum, item) => sum + Math.round(item.product.discountedPrice * 100) * item.quantity, 0) / 100;
-
-  function add(product) {
-    const current = items.find((item) => item.product.id === product.id);
-    if (product.stock < 1 || current?.quantity >= product.stock) {
-      notify('The available stock limit has been reached.', 'error');
-      return;
-    }
-    dispatch({ type: 'add', product });
-    if (!current) notify('Added to your cart.');
+      if (auth.token) {
+        const result = await request(`/api/cart/items/${encodeURIComponent(product.id)}`, {
+          method: 'PUT', token: auth.token, body: { quantity: Math.max(0, quantity) },
+        });
+        if (activeScope.current === owner) { setState({ scope: owner, items: result.items }); report(result); }
+      } else {
+        const next = items.filter((line) => line.product.id !== product.id);
+        if (quantity > 0) next.push({ product, quantity });
+        saveGuest(next); setState({ scope: 'guest', items: next });
+      }
+      return true;
+    } catch (error) { notify(error.message, 'error'); return false; }
+    finally { lock.current = false; setBusy(false); }
   }
-
+  async function add(product) {
+    const current = items.find((line) => line.product.id === product.id);
+    if (product.stock < 1) { notify('This product is out of stock.', 'error'); return false; }
+    const success = await update(product, (current?.quantity || 0) + 1);
+    if (success && !current) notify('Added to your cart.');
+    return success;
+  }
   function changeQuantity(id, delta) {
-    dispatch({ type: 'quantity', id, delta });
+    const line = items.find((item) => item.product.id === id);
+    return line ? update(line.product, line.quantity + delta) : false;
   }
-
-  function remove(id) {
-    dispatch({ type: 'remove', id });
-    notify('Removed from your cart.');
+  async function remove(id) {
+    const line = items.find((item) => item.product.id === id);
+    if (line && await update(line.product, 0)) notify('Removed from your cart.');
   }
-
-  function completeOrder(order) {
+  async function refresh() {
+    if (checking || busy || auth.restoring) return false;
+    if (scope !== 'guest' && state.scope !== scope) { setRevision((value) => value + 1); return false; }
+    setChecking(true); setCheckError(false);
+    const owner = scope;
+    try {
+      if (auth.token) {
+        const result = await request('/api/cart', { token: auth.token });
+        if (activeScope.current === owner) { setState({ scope: owner, items: result.items }); report(result); }
+      } else {
+        const results = await Promise.allSettled(items.map((line) => getProduct(line.product.id)));
+        let failed = false; let changed = false;
+        const next = results.flatMap((result, index) => {
+          const line = items[index];
+          if (result.status === 'rejected') {
+            if (result.reason.status === 404) { changed = true; return []; }
+            failed = true; return [line];
+          }
+          const product = result.value;
+          const quantity = Math.min(line.quantity, product.stock);
+          changed ||= quantity !== line.quantity || product.discountedPrice !== line.product.discountedPrice;
+          return quantity > 0 ? [{ product, quantity }] : [];
+        });
+        if (activeScope.current === owner) { if (changed) saveGuest(next); setState({ scope: owner, items: next }); setCheckError(failed); }
+        if (changed) notify('Your cart was updated to reflect current prices or stock.');
+        return !failed;
+      }
+      return true;
+    } catch (error) { setCheckError(true); notify(error.message, 'error'); return false; }
+    finally { setChecking(false); }
+  }
+  async function completeOrder(order) {
     if (confirmed.current.has(order.reference)) return;
     confirmed.current.add(order.reference);
-    dispatch({ type: 'ordered', quantities: new Map(order.items.map((item) => [item.productId, item.quantity])) });
-  }
-
-  async function refresh() {
-    setCheckError(false);
-    if (!items.length) return true;
-    setChecking(true);
-    const results = await Promise.allSettled(items.map((item) => getProduct(item.product.id)));
-    const latest = new Map();
-    let changed = false;
-    let failed = false;
-
-    results.forEach((result, index) => {
-      const item = items[index];
-      if (result.status === 'fulfilled') {
-        latest.set(item.product.id, result.value);
-        changed ||= item.quantity > result.value.stock || item.product.discountedPrice !== result.value.discountedPrice;
-      } else if (result.reason.status === 404) {
-        latest.set(item.product.id, null);
-        changed = true;
-      } else {
-        failed = true;
-      }
+    if (auth.token) { await refresh(); return; }
+    const next = items.flatMap((line) => {
+      const quantity = line.quantity - (order.items.find((saved) => saved.productId === line.product.id)?.quantity || 0);
+      return quantity > 0 ? [{ ...line, quantity }] : [];
     });
-
-    dispatch({ type: 'refresh', products: latest });
-    setCheckError(failed);
-    setChecking(false);
-    if (changed) notify('Your cart was updated to reflect current prices or stock.');
-    return !failed;
+    saveGuest(next); setState({ scope: 'guest', items: next });
   }
-
-  function openCart() {
-    setOpen(true);
-    if (!checking) void refresh();
-  }
-
-  return (
-    <CartContext.Provider value={{
-      items, count, subtotal, add, changeQuantity, remove, isOpen, openCart,
-      closeCart: () => setOpen(false), checking, checkError, refresh, completeOrder,
-    }}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={{ items, count: items.reduce((sum, line) => sum + line.quantity, 0),
+    subtotal: items.reduce((sum, line) => sum + Math.round(line.product.discountedPrice * 100) * line.quantity, 0) / 100,
+    add, changeQuantity, remove, isOpen, openCart: () => { setOpen(true); void refresh(); }, closeCart: () => setOpen(false),
+    checking: checking || auth.restoring || scope === 'restoring', checkError, busy, refresh, completeOrder,
+    retrySync: () => { if (state.scope !== scope || (auth.token && readGuest().length)) setRevision((value) => value + 1); else void refresh(); },
+    ready: state.scope === scope && !checking && !checkError,
+  }}>{children}</CartContext.Provider>;
 }
-
-export function useCart() {
-  return useContext(CartContext);
-}
+export function useCart() { return useContext(CartContext); }

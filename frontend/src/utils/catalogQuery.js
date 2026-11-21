@@ -1,4 +1,4 @@
-const PRODUCT_FILTERS = ['search', 'category', 'minPrice', 'maxPrice', 'sort'];
+const PRODUCT_FILTERS = ['search', 'category', 'minPrice', 'maxPrice', 'sort', 'minRating', 'inStock', 'offersOnly'];
 
 export function productQuery(params) {
   const query = new URLSearchParams();

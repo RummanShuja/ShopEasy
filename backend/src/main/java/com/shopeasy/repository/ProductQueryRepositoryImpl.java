@@ -55,6 +55,9 @@ public class ProductQueryRepositoryImpl implements ProductQueryRepository {
             }
             query.addCriteria(price);
         }
+        if (filter.minRating() != null) query.addCriteria(Criteria.where("rating").gte(filter.minRating().doubleValue()));
+        if (Boolean.TRUE.equals(filter.inStock())) query.addCriteria(Criteria.where("stock").gt(0));
+        if (Boolean.TRUE.equals(filter.offersOnly())) query.addCriteria(Criteria.where("discountPercent").gt(0));
         return query;
     }
 

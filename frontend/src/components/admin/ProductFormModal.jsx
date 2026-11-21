@@ -80,7 +80,9 @@ export function ProductFormModal({ product, onSave, onClose }) {
     setErrors(validation);
     setSubmitError('');
     if (Object.keys(validation).length) {
-      const field = event.currentTarget.elements.namedItem(Object.keys(validation)[0]);
+      const firstError = Object.keys(validation)[0];
+      const field = event.currentTarget.elements.namedItem(firstError)
+        || (firstError === 'imageUrl' ? event.currentTarget.elements.namedItem('imageFile') : null);
       field?.focus();
       return;
     }

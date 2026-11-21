@@ -18,8 +18,13 @@ public record PurchaseOrder(
         DeliveryAddress deliveryAddress,
         Instant createdAt,
         List<Item> items,
-        @Field(targetType = FieldType.STRING) BigDecimal total
+        @Field(targetType = FieldType.STRING) BigDecimal total,
+        String customerId,
+        OrderStatus status,
+        List<StatusEvent> statusHistory,
+        Long version
 ) {
+    public record StatusEvent(OrderStatus status, Instant timestamp, String note) {}
     public record Item(
             String productId,
             String productName,
